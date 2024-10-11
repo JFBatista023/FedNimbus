@@ -1,5 +1,4 @@
 import * as dotenv from 'dotenv';
-import { getAnalytics } from 'firebase/analytics';
 import { initializeApp } from 'firebase/app';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
@@ -16,7 +15,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// const analytics = getAnalytics(app);
 
 let db;
 if (process.env.NODE_ENV === 'development') {
@@ -24,7 +23,6 @@ if (process.env.NODE_ENV === 'development') {
   connectFirestoreEmulator(db, 'localhost', 8080);
 } else {
   db = getFirestore(app);
-  connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
 // export const firestore = admin.firestore();

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import {
   addDoc,
@@ -78,7 +79,10 @@ export class UsersService {
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      throw new NotFoundException('User not found.');
+      throw new RpcException({
+        message: 'User not found.',
+        statusCode: 404,
+      });
     }
 
     const user = querySnapshot.docs[0];

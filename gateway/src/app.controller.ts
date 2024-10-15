@@ -1,6 +1,6 @@
-import { Controller, Get, HttpStatus, Inject } from '@nestjs/common';
+import { Controller, Get, HttpException, Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { catchError, map, of } from 'rxjs';
+import { catchError, map } from 'rxjs';
 
 @Controller('auth')
 export class AppController {
@@ -13,14 +13,10 @@ export class AppController {
         return {
           success: true,
           data: response,
-        };
+        }; // Refactor
       }),
       catchError(error => {
-        return of({
-          success: false,
-          message: error.message || 'An error occurred',
-          statusCode: error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR,
-        });
+        throw new HttpException(error.message, error.status);
       }),
     );
   }

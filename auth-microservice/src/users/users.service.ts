@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import {
@@ -14,6 +10,7 @@ import {
   getDocs,
   or,
   query,
+  Timestamp,
   updateDoc,
   where,
 } from 'firebase/firestore';
@@ -35,17 +32,24 @@ export class UsersService {
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-      throw new BadRequestException(
-        'User with CPF/CNPJ or e-mail already exists.',
-      );
+      throw new RpcException({
+        message: 'User with CPF/CNPJ or e-mail already exists.',
+        statusCode: 404,
+      });
     }
 
     if (!validateCNPJ(cpf_cnpj) && !validateCPF(cpf_cnpj)) {
-      throw new BadRequestException('Invalid CPF/CNPJ.');
+      throw new RpcException({
+        message: 'Invalid CPF/CNPJ.',
+        statusCode: 404,
+      });
     }
 
     if (!validateEmail(email)) {
-      throw new BadRequestException('Invalid e-mail.');
+      throw new RpcException({
+        message: 'Invalid e-mail.',
+        statusCode: 404,
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -75,18 +79,30 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const q = query(this.usersCollection, where('id', '==', id));
-    const querySnapshot = await getDocs(q);
+    const docRef = doc(firestore, 'users', id);
+    const docSnap = await getDoc(docRef);
 
-    if (querySnapshot.empty) {
+    if (!docSnap.exists()) {
       throw new RpcException({
         message: 'User not found.',
         statusCode: 404,
       });
     }
 
-    const user = querySnapshot.docs[0];
-    return { id: user.id, ...user.data() };
+    const userData = docSnap.data();
+
+    return {
+      id: docSnap.id,
+      ...userData,
+      created_at:
+        userData.created_at instanceof Timestamp
+          ? userData.created_at.toDate().toISOString()
+          : userData.created_at,
+      updated_at:
+        userData.updated_at instanceof Timestamp
+          ? userData.updated_at.toDate().toISOString()
+          : userData.updated_at,
+    };
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {

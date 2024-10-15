@@ -1,5 +1,15 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Payload } from '@nestjs/microservices';
+import { Roles } from 'src/decorators/roles.decorator';
+import { AuthGuard } from 'src/guards/auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RefreshTokenDto } from './dto/refresh.dto';
@@ -27,6 +37,8 @@ export class GatewayController {
     return this.gatewayService.refreshToken(refreshTokenDto);
   }
 
+  @UseGuards(AuthGuard)
+  @Roles('ADMIN')
   @Get('/find-user/:id')
   @HttpCode(200)
   async findOne(@Param('id') id: string) {

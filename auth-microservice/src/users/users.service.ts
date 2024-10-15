@@ -50,7 +50,11 @@ export class UsersService {
       });
     }
 
-    const payload = { email: user.email, sub: user.id };
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      role: user.is_admin ? 'ADMIN' : 'OPERATOR',
+    };
     const access_token = this.jwtService.sign(payload, {
       expiresIn: '1h',
     });
@@ -69,7 +73,11 @@ export class UsersService {
       const payload = this.jwtService.verify(refreshTokenDto.refreshToken);
 
       const newAccessToken = this.jwtService.sign(
-        { email: payload.email, sub: payload.sub },
+        {
+          email: payload.email,
+          sub: payload.sub,
+          role: payload.role,
+        },
         { expiresIn: '1h' },
       );
 

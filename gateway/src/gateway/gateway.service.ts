@@ -1,14 +1,13 @@
-import { Controller, Get, HttpException, Inject } from '@nestjs/common';
+import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, map } from 'rxjs';
 
-@Controller('auth')
-export class AppController {
+@Injectable()
+export class GatewayService {
   constructor(@Inject('AUTH_SERVICE') private client: ClientProxy) {}
 
-  @Get('/test')
-  async test() {
-    return this.client.send('find_one_user', '0').pipe(
+  async findUser(id: string) {
+    return this.client.send('find_one_user', id).pipe(
       map(response => {
         return {
           success: true,
@@ -16,7 +15,10 @@ export class AppController {
         }; // Refactor
       }),
       catchError(error => {
-        throw new HttpException(error.message, error.status);
+        throw new HttpException(
+          { success: false, message: error.message },
+          error.statusCode,
+        );
       }),
     );
   }

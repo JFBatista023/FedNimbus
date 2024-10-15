@@ -129,6 +129,7 @@ export class UsersService {
       cpf_cnpj,
       password: hashedPassword,
       is_company: cpf_cnpj.length === 14,
+      is_admin: false,
       created_at: new Date(),
       updated_at: new Date(),
     };

@@ -1,12 +1,24 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CreateUserDto } from './dto/create-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
+import { RefreshTokenDto } from './dto/refresh.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
 @Controller()
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
+
+  @MessagePattern('login_user')
+  login(@Payload() loginUserDto: LoginUserDto) {
+    return this.userService.login(loginUserDto);
+  }
+
+  @MessagePattern('refresh-token')
+  async refreshToken(@Payload() refreshTokenDto: RefreshTokenDto) {
+    return this.userService.refreshToken(refreshTokenDto);
+  }
 
   @MessagePattern('create_user')
   create(@Payload() createUserDto: CreateUserDto) {

@@ -2,6 +2,8 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, map } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
+import { RefreshTokenDto } from './dto/refresh.dto';
 
 @Injectable()
 export class GatewayService {
@@ -9,6 +11,40 @@ export class GatewayService {
 
   async createUser(payload: CreateUserDto) {
     return this.client.send('create_user', payload).pipe(
+      map(response => {
+        return {
+          success: true,
+          data: response,
+        }; // Refactor
+      }),
+      catchError(error => {
+        throw new HttpException(
+          { success: false, message: error.message },
+          error.statusCode,
+        );
+      }),
+    );
+  }
+
+  async loginUser(payload: LoginUserDto) {
+    return this.client.send('login_user', payload).pipe(
+      map(response => {
+        return {
+          success: true,
+          data: response,
+        }; // Refactor
+      }),
+      catchError(error => {
+        throw new HttpException(
+          { success: false, message: error.message },
+          error.statusCode,
+        );
+      }),
+    );
+  }
+
+  async refreshToken(payload: RefreshTokenDto) {
+    return this.client.send('refresh-token', payload).pipe(
       map(response => {
         return {
           success: true,

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import {
@@ -17,11 +18,71 @@ import {
 import { firestore } from 'src/infra/firebase/firebase.config';
 import { validateCNPJ, validateCPF, validateEmail } from 'validations-br';
 import { CreateUserDto } from './dto/create-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
+import { RefreshTokenDto } from './dto/refresh.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
   private usersCollection = collection(firestore, 'users');
+
+  constructor(private jwtService: JwtService) {}
+
+  async login(loginUserDto: LoginUserDto) {
+    const { email, password } = loginUserDto;
+    const q = query(this.usersCollection, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new RpcException({
+        message: 'User not found.',
+        statusCode: 404,
+      });
+    }
+
+    const user = querySnapshot.docs[0].data();
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      throw new RpcException({
+        message: 'Credentials are wrong.',
+        statusCode: 401,
+      });
+    }
+
+    const payload = { email: user.email, sub: user.id };
+    const access_token = this.jwtService.sign(payload, {
+      expiresIn: '1h',
+    });
+    const refresh_token = this.jwtService.sign(payload, {
+      expiresIn: '7d',
+    });
+
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
+
+  async refreshToken(refreshTokenDto: RefreshTokenDto) {
+    try {
+      const payload = this.jwtService.verify(refreshTokenDto.refreshToken);
+
+      const newAccessToken = this.jwtService.sign(
+        { email: payload.email, sub: payload.sub },
+        { expiresIn: '1h' },
+      );
+
+      return {
+        access_token: newAccessToken,
+      };
+    } catch (error) {
+      throw new RpcException({
+        message: 'Invalid refresh token.',
+        statusCode: 401,
+      });
+    }
+  }
 
   async create(createUserDto: CreateUserDto) {
     const { cpf_cnpj, email, password, ...rest } = createUserDto;

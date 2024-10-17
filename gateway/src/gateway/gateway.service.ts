@@ -1,5 +1,5 @@
 import { HttpException, Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientKafka } from '@nestjs/microservices';
 import { catchError, map } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
@@ -7,15 +7,23 @@ import { RefreshTokenDto } from './dto/refresh.dto';
 
 @Injectable()
 export class GatewayService {
-  constructor(@Inject('AUTH_SERVICE') private client: ClientProxy) {}
+  constructor(@Inject('AUTH_SERVICE') private auth_client: ClientKafka) {}
+
+  async onModuleInit() {
+    this.auth_client.subscribeToResponseOf('create_user');
+    this.auth_client.subscribeToResponseOf('login_user');
+    this.auth_client.subscribeToResponseOf('refresh_token');
+    this.auth_client.subscribeToResponseOf('find_one_user');
+    await this.auth_client.connect();
+  }
 
   async createUser(payload: CreateUserDto) {
-    return this.client.send('create_user', payload).pipe(
+    return this.auth_client.send('create_user', payload).pipe(
       map(response => {
         return {
           success: true,
           data: response,
-        }; // Refactor
+        };
       }),
       catchError(error => {
         throw new HttpException(
@@ -27,12 +35,12 @@ export class GatewayService {
   }
 
   async loginUser(payload: LoginUserDto) {
-    return this.client.send('login_user', payload).pipe(
+    return this.auth_client.send('login_user', payload).pipe(
       map(response => {
         return {
           success: true,
           data: response,
-        }; // Refactor
+        };
       }),
       catchError(error => {
         throw new HttpException(
@@ -44,12 +52,12 @@ export class GatewayService {
   }
 
   async refreshToken(payload: RefreshTokenDto) {
-    return this.client.send('refresh-token', payload).pipe(
+    return this.auth_client.send('refresh-token', payload).pipe(
       map(response => {
         return {
           success: true,
           data: response,
-        }; // Refactor
+        };
       }),
       catchError(error => {
         throw new HttpException(
@@ -61,12 +69,12 @@ export class GatewayService {
   }
 
   async findUser(id: string) {
-    return this.client.send('find_one_user', id).pipe(
+    return this.auth_client.send('find_one_user', id).pipe(
       map(response => {
         return {
           success: true,
           data: response,
-        }; // Refactor
+        };
       }),
       catchError(error => {
         throw new HttpException(

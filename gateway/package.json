@@ -27,6 +27,7 @@
     "@nestjs/microservices": "^10.4.4",
     "@nestjs/platform-express": "^10.0.0",
     "gateway": "file:",
+    "kafkajs": "^2.2.4",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1"
   },

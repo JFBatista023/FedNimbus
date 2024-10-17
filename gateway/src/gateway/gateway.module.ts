@@ -9,8 +9,17 @@ import { GatewayService } from './gateway.service';
     ClientsModule.register([
       {
         name: 'AUTH_SERVICE',
-        transport: Transport.TCP,
-        options: { host: '127.0.0.1', port: 3001 },
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            clientId: 'gateway',
+            brokers: ['localhost:9092'],
+          },
+          consumer: {
+            groupId: 'gateway-consumer',
+            allowAutoTopicCreation: true,
+          },
+        },
       },
     ]),
     JwtModule.register({

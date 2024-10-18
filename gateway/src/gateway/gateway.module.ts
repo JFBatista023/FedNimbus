@@ -13,7 +13,7 @@ import { GatewayService } from './gateway.service';
         options: {
           client: {
             clientId: 'gateway',
-            brokers: ['localhost:9092'],
+            brokers: ['kafka:9092'],
           },
           consumer: {
             groupId: 'gateway-consumer',

@@ -34,7 +34,7 @@ importers:
         version: 4.0.2
       auth-microservice:
         specifier: 'file:'
-        version: file:(@grpc/grpc-js@1.12.2)(kafkajs@2.2.4)
+        version: file:(@grpc/grpc-js@1.12.2)
       bcrypt:
         specifier: ^5.1.1
         version: 5.1.1
@@ -5096,7 +5096,7 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  auth-microservice@file:(@grpc/grpc-js@1.12.2)(kafkajs@2.2.4):
+  auth-microservice@file:(@grpc/grpc-js@1.12.2):
     dependencies:
       '@google-cloud/firestore': 7.10.0
       '@nestjs/common': 10.4.4(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
@@ -5115,6 +5115,7 @@ snapshots:
       gauge: 5.0.2
       glob: 11.0.0
       inflight: 1.0.6
+      kafkajs: 2.2.4
       npmlog: 7.0.1
       reflect-metadata: 0.2.2
       rimraf: 6.0.1
@@ -5129,7 +5130,6 @@ snapshots:
       - cache-manager
       - encoding
       - ioredis
-      - kafkajs
       - mqtt
       - nats
       - supports-color

@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  gateway:
+    container_name: gateway
+    build: .
+    ports:
+      - '3000:3000'
+    networks:
+      - kafka_network
+
+networks:
+  kafka_network:
+    driver: bridge

@@ -5,6 +5,8 @@ import {
   HttpCode,
   Param,
   Post,
+  Put,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { Payload } from '@nestjs/microservices';
@@ -13,6 +15,7 @@ import { AuthGuard } from 'src/guards/auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RefreshTokenDto } from './dto/refresh.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { GatewayService } from './gateway.service';
 
 @Controller('gateway')
@@ -41,7 +44,35 @@ export class GatewayController {
   @Roles('ADMIN')
   @Get('/find-user/:id')
   @HttpCode(200)
-  async findOne(@Param('id') id: string) {
+  async findOneUser(@Param('id') id: string) {
     return this.gatewayService.findUser(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Roles('ADMIN')
+  @Get('/find-all')
+  @HttpCode(200)
+  async findAllUsers() {
+    return this.gatewayService.findAllUsers();
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('/update-user/:id')
+  @HttpCode(200)
+  async updateUser(
+    @Param('id') id: string,
+    @Payload() updateUserDto: UpdateUserDto,
+    @Request() req,
+  ) {
+    const userIdFromToken = req.user.sub;
+    return this.gatewayService.updateUser(userIdFromToken, id, updateUserDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Roles('ADMIN')
+  @Get('/delete-user/:id')
+  @HttpCode(201)
+  async deleteUser(@Param('id') id: string) {
+    return this.gatewayService.deleteUser(id);
   }
 }

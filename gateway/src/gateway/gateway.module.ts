@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { jwtConstants } from 'src/infra/auth/constants';
 import { GatewayController } from './gateway.controller';
 import { GatewayService } from './gateway.service';
 
@@ -13,7 +14,7 @@ import { GatewayService } from './gateway.service';
         options: {
           client: {
             clientId: 'gateway',
-            brokers: ['kafka:9092'],
+            brokers: ['localhost:9092'],
           },
           consumer: {
             groupId: 'gateway-consumer',
@@ -23,7 +24,7 @@ import { GatewayService } from './gateway.service';
       },
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secretKey',
+      secret: jwtConstants.secret,
       signOptions: { expiresIn: '1h' },
     }),
   ],

@@ -35,8 +35,8 @@ export class UsersService {
 
     if (querySnapshot.empty) {
       throw new RpcException({
-        message: 'User not found.',
-        statusCode: 404,
+        message: 'Credentials are wrong.',
+        statusCode: 401,
       });
     }
 
@@ -52,13 +52,14 @@ export class UsersService {
 
     const payload = {
       email: user.email,
-      sub: user.id,
+      sub: querySnapshot.docs[0].id,
       role: user.is_admin ? 'ADMIN' : 'OPERATOR',
     };
-    const access_token = this.jwtService.sign(payload, {
+
+    const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '1h',
     });
-    const refresh_token = this.jwtService.sign(payload, {
+    const refresh_token = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
     });
 
@@ -175,7 +176,15 @@ export class UsersService {
     };
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(updateUserDto: UpdateUserDto) {
+    const { id, idFromToken, ...updateFields } = updateUserDto;
+    if (id !== idFromToken) {
+      throw new RpcException({
+        message: 'Unauthorized. You can only update your own data.',
+        statusCode: 403,
+      });
+    }
+
     const userRef = doc(firestore, 'users', id);
     const userSnapshot = await getDoc(userRef);
 
@@ -183,16 +192,18 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
-    const updatedUser = {
-      ...updateUserDto,
-      updated_at: new Date(),
+    const updatedData = {
+      ...updateFields,
+      update_at: new Date(),
     };
 
-    await updateDoc(userRef, updatedUser);
-    return { id, ...updatedUser };
+    console.log(updatedData);
+
+    await updateDoc(userRef, updatedData);
+    return { id, ...updatedData };
   }
 
-  async remove(id: string) {
+  async delete(id: string) {
     const userRef = doc(firestore, 'users', id);
     const userSnapshot = await getDoc(userRef);
 

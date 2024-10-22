@@ -20,6 +20,7 @@ const app = initializeApp(firebaseConfig);
 let db;
 if (process.env.NODE_ENV === 'development') {
   db = getFirestore();
+  // connectFirestoreEmulator(db, 'host.docker.internal', 8080);
   connectFirestoreEmulator(db, 'localhost', 8080);
 } else {
   db = getFirestore(app);

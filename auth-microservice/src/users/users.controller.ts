@@ -15,7 +15,7 @@ export class UsersController {
     return this.userService.login(loginUserDto);
   }
 
-  @MessagePattern('refresh-token')
+  @MessagePattern('refresh_token')
   async refreshToken(@Payload() refreshTokenDto: RefreshTokenDto) {
     return this.userService.refreshToken(refreshTokenDto);
   }
@@ -25,7 +25,7 @@ export class UsersController {
     return this.userService.create(createUserDto);
   }
 
-  @MessagePattern('find_all_user')
+  @MessagePattern('find_all_users')
   findAll() {
     return this.userService.findAll();
   }
@@ -37,11 +37,11 @@ export class UsersController {
 
   @MessagePattern('update_user')
   update(@Payload() updateUserDto: UpdateUserDto) {
-    return this.userService.update(updateUserDto.id, updateUserDto);
+    return this.userService.update(updateUserDto);
   }
 
-  @MessagePattern('remove_user')
-  remove(@Payload() id: string) {
-    return this.userService.remove(id);
+  @MessagePattern('delete_user')
+  delete(@Payload() id: string) {
+    return this.userService.delete(id);
   }
 }

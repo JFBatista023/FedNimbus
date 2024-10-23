@@ -111,7 +111,7 @@ export class GatewayService {
     id: string,
     updateUserDto: UpdateUserDto,
   ) {
-    const payload = { idFromToken, id, updateUserDto };
+    const payload = { idFromToken, id, ...updateUserDto };
     return this.auth_client.send('update_user', payload).pipe(
       map(response => {
         return {

@@ -136,15 +136,19 @@ export class UsersService {
     };
 
     const docRef = await addDoc(this.usersCollection, newUser);
-    return { id: docRef.id, ...newUser };
+    const { password: psw, ...userWithoutPassword } = newUser;
+    return { id: docRef.id, ...userWithoutPassword };
   }
 
   async findAll() {
     const usersCollection = await getDocs(this.usersCollection);
-    const users = usersCollection.docs.map(user => ({
-      id: user.id,
-      ...user.data(),
-    }));
+    const users = usersCollection.docs.map(user => {
+      const { password, ...userWithoutPassword } = user.data();
+      return {
+        id: user.id,
+        ...userWithoutPassword,
+      };
+    });
 
     return users;
   }
@@ -160,7 +164,7 @@ export class UsersService {
       });
     }
 
-    const userData = docSnap.data();
+    const { password, ...userData } = docSnap.data();
 
     return {
       id: docSnap.id,
@@ -194,13 +198,13 @@ export class UsersService {
 
     const updatedData = {
       ...updateFields,
-      update_at: new Date(),
+      updated_at: new Date(),
     };
 
-    console.log(updatedData);
+    const { password, ...userData } = updatedData;
 
     await updateDoc(userRef, updatedData);
-    return { id, ...updatedData };
+    return { id, ...userData };
   }
 
   async delete(id: string) {

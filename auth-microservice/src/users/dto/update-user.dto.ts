@@ -16,7 +16,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  name?: string; // Torna o campo opcional se quiser
+  name?: string;
 
   @IsPhoneNumber(null)
   @IsOptional()
@@ -28,7 +28,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @Length(8, 20)
-  password?: string; // Torna o campo opcional para evitar atualizações não intencionais
+  password?: string;
 
   @IsOptional()
   @IsString()
@@ -48,5 +48,5 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  cpf_cnpj?: string; // Certifique-se de que a validação está correta
+  cpf_cnpj?: string;
 }

@@ -1,22 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { configDotenv } from 'dotenv';
-import { UsersModule } from './users/users.module';
+import { TrainingModule } from './training/training.module';
 
 configDotenv();
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    UsersModule,
+    TrainingModule,
     {
       transport: Transport.KAFKA,
       options: {
         client: {
-          clientId: 'auth',
+          clientId: 'training',
           brokers: [process.env.BROKER_KAFKA],
         },
         consumer: {
-          groupId: 'auth-consumer',
+          groupId: 'training-consumer',
         },
       },
     },

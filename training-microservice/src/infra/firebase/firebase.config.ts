@@ -24,6 +24,7 @@ if (process.env.NODE_ENV === 'development') {
   db = getFirestore();
   str = getStorage();
   // connectFirestoreEmulator(db, 'host.docker.internal', 8080);
+  // connectStorageEmulator(db, 'host.docker.internal', 9199);
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectStorageEmulator(str, 'localhost', 9199);
 } else {

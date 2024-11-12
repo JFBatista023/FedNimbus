@@ -8,7 +8,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class GatewayService {
-  constructor(@Inject('AUTH_SERVICE') private auth_client: ClientKafka) {}
+  constructor(
+    @Inject('AUTH_SERVICE') private auth_client: ClientKafka,
+    @Inject('TRAINING_SERVICE') private training_client: ClientKafka,
+  ) {}
 
   async onModuleInit() {
     this.auth_client.subscribeToResponseOf('create_user');
@@ -143,5 +146,11 @@ export class GatewayService {
         );
       }),
     );
+  }
+
+  async trainModel(idFromToken: string) {
+    const payload = { idFromToken };
+    console.log('Chegou');
+    return this.training_client.emit('training_requests', payload);
   }
 }

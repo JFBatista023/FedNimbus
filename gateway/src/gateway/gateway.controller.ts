@@ -75,4 +75,12 @@ export class GatewayController {
   async deleteUser(@Param('id') id: string) {
     return this.gatewayService.deleteUser(id);
   }
+
+  @UseGuards(AuthGuard)
+  @Get('/train')
+  @HttpCode(200)
+  async trainModel(@Request() req) {
+    const userIdFromToken = req.user.sub;
+    return this.gatewayService.trainModel(userIdFromToken);
+  }
 }

@@ -150,7 +150,6 @@ export class GatewayService {
 
   async trainModel(idFromToken: string) {
     const payload = { idFromToken };
-    console.log('Chegou');
     return this.training_client.emit('training_requests', payload);
   }
 }

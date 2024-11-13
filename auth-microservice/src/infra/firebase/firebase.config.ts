@@ -1,6 +1,10 @@
 import * as dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import {
+  connectFirestoreEmulator,
+  Firestore,
+  getFirestore,
+} from 'firebase/firestore';
 
 dotenv.config();
 
@@ -27,4 +31,4 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // export const firestore = admin.firestore();
-export const firestore = db;
+export const firestore: Firestore = db;

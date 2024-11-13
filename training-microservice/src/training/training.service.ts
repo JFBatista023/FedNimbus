@@ -9,7 +9,10 @@ import {
   query,
   where,
 } from 'firebase/firestore';
+import { getDownloadURL, ref } from 'firebase/storage';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { firestore, storage } from 'src/infra/firebase/firebase.config';
 import { TrainingParams } from './entities/training.entity';
 
@@ -41,7 +44,7 @@ export class TrainingService {
     const trainingHistory = [];
 
     // Passo 2: Baixar o dataset do Storage emulador
-    const datasetPath = await this.downloadDataset('path/to/wine-quality.csv');
+    const datasetPath = await this.downloadDataset();
     const dataset = this.loadDatasetFromCSV(datasetPath);
 
     // Passo 3: Configura o modelo
@@ -149,21 +152,52 @@ export class TrainingService {
     });
   }
 
-  private async downloadDataset(path: string): Promise<string> {
-    const destFilename = '/tmp/wine-quality.csv';
+  private async downloadDataset(): Promise<string> {
+    const destFilename = path.join(os.tmpdir(), 'winequality-white.csv');
+    console.log(destFilename);
 
+    // Verifica se o dataset já existe localmente
     if (fs.existsSync(destFilename)) {
       console.log('Dataset já existe localmente. Pulando o download.');
       return destFilename;
     }
 
-    // Caso o arquivo não exista, realiza o download
-    const bucket = storage.bucket(process.env.STORAGE_BUCKET);
-    const file = bucket.file(path);
-    await file.download({ destination: destFilename });
-    console.log('Download do dataset concluído.');
+    try {
+      // Cria uma referência ao arquivo
+      const datasetRef = ref(storage, 'winequality-white.csv');
 
-    return destFilename;
+      // Obtém a URL de download do arquivo
+      const url = await getDownloadURL(datasetRef);
+
+      // Realiza o download do arquivo usando fetch
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Erro ao baixar o dataset: ${response.statusText}`);
+      }
+
+      // Converte o conteúdo para um buffer e grava o arquivo localmente
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(destFilename, buffer);
+      console.log('Download do dataset concluído.');
+
+      return destFilename;
+    } catch (error: any) {
+      switch (error.code) {
+        case 'storage/object-not-found':
+          console.error('Arquivo não encontrado no Firebase Storage.');
+          break;
+        case 'storage/unauthorized':
+          console.error('Acesso não autorizado ao Firebase Storage.');
+          break;
+        case 'storage/canceled':
+          console.error('Download cancelado.');
+          break;
+        case 'storage/unknown':
+        default:
+          console.error('Erro desconhecido:', error.message);
+      }
+      throw error;
+    }
   }
 
   private loadDatasetFromCSV(filePath: string) {

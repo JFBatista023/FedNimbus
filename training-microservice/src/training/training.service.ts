@@ -11,7 +11,6 @@ import {
 } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { firestore, storage } from 'src/infra/firebase/firebase.config';
 import { TrainingParams } from './entities/training.entity';
@@ -153,8 +152,19 @@ export class TrainingService {
   }
 
   private async downloadDataset(): Promise<string> {
-    const destFilename = path.join(os.tmpdir(), 'winequality-white.csv');
-    console.log(destFilename);
+    // Obtém o diretório atual do arquivo (onde o código está sendo executado)
+    const currentDir = __dirname;
+
+    // Sobe dois níveis e cria o caminho para a pasta 'dataset'
+    const datasetDir = path.join(currentDir, '../../dataset');
+
+    // Verifica se a pasta 'dataset' existe, caso contrário, cria
+    if (!fs.existsSync(datasetDir)) {
+      fs.mkdirSync(datasetDir, { recursive: true });
+    }
+
+    // Define o nome do arquivo dentro da pasta 'dataset'
+    const destFilename = path.join(datasetDir, 'winequality-white.csv');
 
     // Verifica se o dataset já existe localmente
     if (fs.existsSync(destFilename)) {

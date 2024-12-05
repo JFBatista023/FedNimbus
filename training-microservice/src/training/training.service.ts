@@ -78,7 +78,7 @@ export class TrainingService {
     });
 
     // Passo 6: Verifica a convergência e salva os parâmetros
-    const converged = this.checkConvergence(model);
+    const converged = this.checkConvergence(history);
 
     const trainingEndTime = new Date().getTime();
     const trainingDuration = trainingEndTime - trainingStartTime;
@@ -99,17 +99,17 @@ export class TrainingService {
         finalRmse: finalRmse,
         finalMae: history.history['mae']
           ? Number(history.history['mae'].slice(-1)[0])
-          : undefined,
+          : null,
       },
       trainingHistory: trainingHistory,
       modelInfo: {
         trainingDuration: trainingDuration,
         totalParameters: model.countParams(),
-        convergenceEpoch: converged ? trainingHistory.length : undefined,
+        convergenceEpoch: converged ? trainingHistory.length : null,
         earlyStoppedAt:
           history.epoch.length < initialParams.epochs
             ? history.epoch.length
-            : undefined,
+            : null,
       },
     });
 
@@ -212,19 +212,29 @@ export class TrainingService {
 
   private loadDatasetFromCSV(filePath: string) {
     const data = fs.readFileSync(filePath, 'utf8');
-    const rows = data.split('\n').slice(1); // Remove header
+    const rows = data.split('\n').slice(1); // Remove o cabeçalho
     const xs = [];
     const ys = [];
+    const expectedColumns = 11; // Número de colunas de entrada
 
     rows.forEach(row => {
-      const values = row.split(';').map(parseFloat);
-      xs.push(values.slice(0, -1)); // Atributos
-      ys.push(values[values.length - 1]); // Qualidade (label)
+      const values = row.split(';').map(value => parseFloat(value.trim())); // Usa ponto e vírgula como delimitador
+      if (values.length === expectedColumns + 1) {
+        // Certifica-se que todas as colunas estão presentes
+        xs.push(values.slice(0, -1)); // Entrada: todas as colunas exceto 'quality'
+        ys.push(values[values.length - 1]); // Saída: coluna 'quality'
+      }
     });
 
+    if (xs.length === 0 || ys.length === 0) {
+      throw new Error(
+        'O dataset está vazio ou mal formatado. Verifique o arquivo de entrada.',
+      );
+    }
+
     return {
-      xs: tf.tensor2d(xs),
-      ys: tf.tensor1d(ys),
+      xs: tf.tensor2d(xs, [xs.length, expectedColumns]), // Define a forma explicitamente
+      ys: tf.tensor1d(ys), // Saída: array unidimensional
     };
   }
 
@@ -238,9 +248,9 @@ export class TrainingService {
     return model;
   }
 
-  private checkConvergence(model: tf.LayersModel): boolean {
-    const lastLoss = Number(model.history.history['loss'].slice(-1)[0]);
-    const lastMse = Number(model.history.history['mse'].slice(-1)[0]);
+  private checkConvergence(history: tf.History): boolean {
+    const lastLoss = Number(history.history['loss'].slice(-1)[0]);
+    const lastMse = Number(history.history['mse'].slice(-1)[0]);
 
     return (
       lastLoss < this.CONVERGENCE_THRESHOLD.loss &&

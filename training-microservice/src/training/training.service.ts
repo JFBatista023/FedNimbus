@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as tf from '@tensorflow/tfjs-node';
+
 import {
   addDoc,
   collection,
@@ -9,15 +11,16 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { getDownloadURL, ref } from 'firebase/storage';
-import * as fs from 'fs';
-import * as path from 'path';
 import { firestore, storage } from 'src/infra/firebase/firebase.config';
+import { getDownloadURL, ref } from 'firebase/storage';
+
+import { Injectable } from '@nestjs/common';
 import { TrainingParams } from './entities/training.entity';
 
 @Injectable()
 export class TrainingService {
   private readonly paramsCollection = collection(firestore, 'params-info');
+  private readonly aggCollection = collection(firestore, 'aggregated-weights');
   private readonly CONVERGENCE_THRESHOLD = {
     loss: 0.05,
     mse: 0.1,
@@ -27,29 +30,37 @@ export class TrainingService {
     console.log(`Iniciando treinamento para o usuário com ID: ${idFromToken}`);
 
     // Passo 1: Verifica se existem parâmetros de treinamento existentes
-    const recentParams = await this.getRecentParams(idFromToken);
+    const userLastTraining = await this.getUserLastTrainingInfos(idFromToken);
 
-    if (recentParams?.hasConverged) {
-      // Alterar
+    if (userLastTraining?.hasConverged) {
       return {
         status: 'already_converged',
         message: 'Modelo já convergiu anteriormente para este usuário',
-        lastTrainingParams: recentParams,
+        lastTrainingParams: userLastTraining,
       };
     }
 
-    const initialParams = recentParams || this.getInitialParams(idFromToken);
+    const recentParams = await this.getAggregateWeights();
+    const initialParams = recentParams || this.getInitialParams();
     const trainingStartTime = new Date().getTime();
     const trainingHistory = [];
 
-    // Passo 2: Baixar o dataset do Storage emulador
+    // Passo 2: Baixar o dataset
     const datasetPath = await this.downloadDataset();
     const dataset = this.loadDatasetFromCSV(datasetPath);
 
-    // Passo 3: Configura o modelo
+    // Passo 3: Configura o modelo e inicializa com os pesos apropriados
     const model = this.buildModel();
 
-    // Passo 4: Compila o modelo com os parâmetros mais recentes
+    // Converte os pesos salvos para tensores
+    const weightTensors = initialParams.aggregatedWeights.map(w =>
+      tf.tensor(w, undefined, 'float32'),
+    );
+
+    // Atribui os pesos ao modelo usando setWeights
+    model.setWeights(weightTensors);
+
+    // Passo 4: Compila o modelo
     model.compile({
       optimizer: tf.train.adam(initialParams.learningRate),
       loss: 'meanSquaredError',
@@ -68,8 +79,8 @@ export class TrainingService {
             epochNumber: epoch,
             loss: Number(logs.loss),
             mse: Number(logs.mse),
-            validationLoss: logs.val_loss ? Number(logs.val_loss) : undefined,
-            validationMse: logs.val_mse ? Number(logs.val_mse) : undefined,
+            validationLoss: logs.val_loss ? Number(logs.val_loss) : null,
+            validationMse: logs.val_mse ? Number(logs.val_mse) : null,
             learningRate: initialParams.learningRate,
           };
           trainingHistory.push(epochMetrics);
@@ -86,6 +97,18 @@ export class TrainingService {
     const finalMse = Number(history.history['mse'].slice(-1)[0]);
     const finalRmse = Math.sqrt(finalMse);
 
+    const weights = model.trainableWeights;
+    const serializedWeights = weights.map(w => Array.from(w.read().dataSync()));
+
+    const trainingHistoryMapped = trainingHistory.map(epoch => ({
+      epochNumber: epoch.epochNumber,
+      loss: epoch.loss,
+      mse: epoch.mse,
+      validationLoss: epoch.validationLoss ?? null,
+      validationMse: epoch.validationMse ?? null,
+      learningRate: epoch.learningRate,
+    }));
+
     const newTrainingParams = new TrainingParams({
       userId: idFromToken,
       learningRate: initialParams.learningRate,
@@ -97,11 +120,22 @@ export class TrainingService {
         finalLoss: Number(history.history['loss'].slice(-1)[0]),
         finalMse: finalMse,
         finalRmse: finalRmse,
-        finalMae: history.history['mae']
-          ? Number(history.history['mae'].slice(-1)[0])
+        validationLoss: history.history['val_loss']
+          ? Number(
+              this.getValueFromTensorOrNumber(
+                history.history['val_loss'].slice(-1)[0],
+              ),
+            )
+          : null,
+        validationMse: history.history['val_mse']
+          ? Number(
+              this.getValueFromTensorOrNumber(
+                history.history['val_mse'].slice(-1)[0],
+              ),
+            )
           : null,
       },
-      trainingHistory: trainingHistory,
+      trainingHistory: trainingHistoryMapped,
       modelInfo: {
         trainingDuration: trainingDuration,
         totalParameters: model.countParams(),
@@ -113,24 +147,47 @@ export class TrainingService {
       },
     });
 
-    await addDoc(this.paramsCollection, { ...newTrainingParams });
+    // Remove o id antes de salvar
+    const { id, ...trainingParamsWithoutId } = newTrainingParams;
+    await addDoc(this.paramsCollection, trainingParamsWithoutId);
 
     // Alterar
     return { status: 'completed', converged };
   }
 
-  private getInitialParams(userId: string): TrainingParams {
+  private getInitialParams(): TrainingParams {
+    const model = this.buildModel();
+    const initialWeights = model.trainableWeights.map(w => {
+      const heInitializer = tf.initializers.heNormal({ seed: 42 });
+      const tensor = heInitializer.apply(w.read().shape);
+      return tensor.arraySync();
+    });
+
     return new TrainingParams({
-      userId,
       learningRate: 0.01,
       epochs: 10,
       batchSize: 32,
       hasConverged: false,
       createdAt: new Date(),
+      aggregatedWeights: initialWeights,
     });
   }
 
-  private async getRecentParams(
+  private async getAggregateWeights(): Promise<TrainingParams | null> {
+    const q = query(this.aggCollection, orderBy('createdAt', 'desc'), limit(1));
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+
+    const data = snapshot.docs[0].data();
+    return new TrainingParams({
+      id: snapshot.docs[0].id,
+      ...data,
+      createdAt: data.createdAt.toDate(),
+    });
+  }
+
+  private async getUserLastTrainingInfos(
     userId: string,
   ): Promise<TrainingParams | null> {
     const q = query(
@@ -236,6 +293,11 @@ export class TrainingService {
       xs: tf.tensor2d(xs, [xs.length, expectedColumns]), // Define a forma explicitamente
       ys: tf.tensor1d(ys), // Saída: array unidimensional
     };
+  }
+
+  // Função auxiliar para extrair o valor de um tensor ou número
+  private getValueFromTensorOrNumber(value: number | tf.Tensor): number {
+    return value instanceof tf.Tensor ? value.dataSync()[0] : value;
   }
 
   private buildModel(): tf.LayersModel {

@@ -1,23 +1,23 @@
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
+import { AggregationModule } from './aggregation/aggregation.module';
 import { NestFactory } from '@nestjs/core';
-import { TrainingModule } from './training/training.module';
 import { configDotenv } from 'dotenv';
 
 configDotenv();
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    TrainingModule,
+    AggregationModule,
     {
       transport: Transport.KAFKA,
       options: {
         client: {
-          clientId: 'training',
           brokers: [process.env.BROKER_KAFKA],
+          clientId: 'aggregation',
         },
         consumer: {
-          groupId: 'training-consumer',
+          groupId: 'aggregation-consumer',
           retry: {
             retries: 1, // Define o número máximo de tentativas
             initialRetryTime: 1000, // Tempo inicial de espera entre tentativas (ms)

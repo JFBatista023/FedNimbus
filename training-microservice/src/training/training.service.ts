@@ -1,6 +1,6 @@
+import * as tf from '@tensorflow/tfjs-node';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as tf from '@tensorflow/tfjs-node';
 
 import {
   addDoc,
@@ -11,14 +11,19 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { firestore, storage } from 'src/infra/firebase/firebase.config';
 import { getDownloadURL, ref } from 'firebase/storage';
+import { firestore, storage } from 'src/infra/firebase/firebase.config';
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
 import { TrainingParams } from './entities/training.entity';
 
 @Injectable()
 export class TrainingService {
+  constructor(
+    @Inject('AGGREGATION_SERVICE') private aggregation_client: ClientKafka,
+  ) {}
+
   private readonly paramsCollection = collection(firestore, 'params-info');
   private readonly aggCollection = collection(firestore, 'aggregated-weights');
   private readonly CONVERGENCE_THRESHOLD = {
@@ -151,8 +156,11 @@ export class TrainingService {
     const { id, ...trainingParamsWithoutId } = newTrainingParams;
     await addDoc(this.paramsCollection, trainingParamsWithoutId);
 
-    // Alterar
-    return { status: 'completed', converged };
+    // Enviar pesos para o microserviço de agregação
+    return this.aggregation_client.emit('model-weights', {
+      userId: idFromToken,
+      weights: serializedWeights,
+    });
   }
 
   private getInitialParams(): TrainingParams {

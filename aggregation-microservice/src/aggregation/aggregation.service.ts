@@ -27,15 +27,17 @@ export class AggregationService {
   private async performAggregation(userId: string) {
     const weights = this.weightBuffer.get(userId);
 
-    const aggregatedWeights = weights[0].map((_, layerIndex) => {
-      const layerWeights = weights.map(model => model[layerIndex]);
-      return tf.tensor(layerWeights).mean().arraySync();
+    // Calcula a média dos pesos
+    const aggregatedWeights = weights[0].map((_, index) => {
+      const weightsAtIndex = weights.map(w => w[index]);
+      return tf.tensor1d(weightsAtIndex).mean().arraySync();
     });
 
+    // Salva no Firestore
     await addDoc(this.aggCollection, {
       userId,
-      weights: aggregatedWeights,
-      timestamp: new Date(),
+      weights: aggregatedWeights, // Já está unidimensional
+      createdAt: new Date(),
       numberOfModels: weights.length,
     });
 

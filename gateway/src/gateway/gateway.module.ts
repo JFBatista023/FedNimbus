@@ -1,6 +1,7 @@
+import { ClientsModule, Transport } from '@nestjs/microservices';
+
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 import { configDotenv } from 'dotenv';
 import { jwtConstants } from 'src/infra/auth/constants';
 import { GatewayController } from './gateway.controller';
@@ -22,6 +23,11 @@ configDotenv();
           consumer: {
             groupId: 'gateway-consumer',
             allowAutoTopicCreation: true,
+            retry: {
+              retries: 1,
+              initialRetryTime: 1000,
+              maxRetryTime: 5000,
+            },
           },
         },
       },
@@ -36,6 +42,11 @@ configDotenv();
           consumer: {
             groupId: 'gateway-consumer',
             allowAutoTopicCreation: true,
+            retry: {
+              retries: 1,
+              initialRetryTime: 1000,
+              maxRetryTime: 5000,
+            },
           },
         },
       },

@@ -45,7 +45,7 @@ export class TrainingParams {
     this.id = data.id;
     this.userId = data.userId;
     this.learningRate = data.learningRate || 0.01;
-    this.epochs = data.epochs || 10;
+    this.epochs = data.epochs || 20;
     this.batchSize = data.batchSize || 32;
     this.hasConverged = data.hasConverged || false;
     this.createdAt = data.createdAt || new Date();

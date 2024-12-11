@@ -17,16 +17,17 @@ configDotenv();
         transport: Transport.KAFKA,
         options: {
           client: {
-            clientId: 'gateway',
+            clientId: 'auth',
             brokers: [process.env.BROKER_KAFKA],
           },
           consumer: {
-            groupId: 'gateway-consumer',
+            groupId: 'auth-consumer',
             allowAutoTopicCreation: true,
             retry: {
-              retries: 1,
-              initialRetryTime: 1000,
-              maxRetryTime: 5000,
+              retries: 1, // Define o número máximo de tentativas
+              initialRetryTime: 1000, // Tempo inicial de espera entre tentativas (ms)
+              multiplier: 2, // Multiplicador exponencial para o tempo de espera
+              maxRetryTime: 10000, // Tempo máximo de espera entre tentativas (ms)
             },
           },
         },
@@ -36,16 +37,17 @@ configDotenv();
         transport: Transport.KAFKA,
         options: {
           client: {
-            clientId: 'gateway',
+            clientId: 'training',
             brokers: [process.env.BROKER_KAFKA],
           },
           consumer: {
-            groupId: 'gateway-consumer',
+            groupId: 'training-consumer',
             allowAutoTopicCreation: true,
             retry: {
-              retries: 1,
-              initialRetryTime: 1000,
-              maxRetryTime: 5000,
+              retries: 1, // Define o número máximo de tentativas
+              initialRetryTime: 1000, // Tempo inicial de espera entre tentativas (ms)
+              multiplier: 2, // Multiplicador exponencial para o tempo de espera
+              maxRetryTime: 10000, // Tempo máximo de espera entre tentativas (ms)
             },
           },
         },

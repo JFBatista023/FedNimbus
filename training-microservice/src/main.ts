@@ -1,8 +1,8 @@
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 import { NestFactory } from '@nestjs/core';
-import { TrainingModule } from './training/training.module';
 import { configDotenv } from 'dotenv';
+import { TrainingModule } from './training/training.module';
 
 configDotenv();
 
@@ -18,12 +18,6 @@ async function bootstrap() {
         },
         consumer: {
           groupId: 'training-consumer',
-          retry: {
-            retries: 1, // Define o número máximo de tentativas
-            initialRetryTime: 1000, // Tempo inicial de espera entre tentativas (ms)
-            multiplier: 2, // Multiplicador exponencial para o tempo de espera
-            maxRetryTime: 10000, // Tempo máximo de espera entre tentativas (ms)
-          },
         },
       },
     },

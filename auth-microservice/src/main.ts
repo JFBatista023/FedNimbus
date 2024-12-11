@@ -1,5 +1,6 @@
-import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+
+import { NestFactory } from '@nestjs/core';
 import { configDotenv } from 'dotenv';
 import { UsersModule } from './users/users.module';
 

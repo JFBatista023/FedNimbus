@@ -124,7 +124,7 @@ export class TrainingService {
       const history = await model.fit(dataset.xs, dataset.ys, {
         epochs: initialParams.epochs,
         batchSize: initialParams.batchSize,
-        validationSplit: 0.2, // Adiciona validação split
+        validationSplit: 0.3, // Adiciona validação split
         callbacks: {
           onEpochEnd: (epoch, logs) => {
             // Coleta métricas a cada epoch
@@ -238,7 +238,7 @@ export class TrainingService {
 
       return new TrainingParams({
         learningRate: 0.01,
-        epochs: 20,
+        epochs: 10,
         batchSize: 32,
         hasConverged: false,
         createdAt: new Date(),

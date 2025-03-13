@@ -8,7 +8,7 @@ export class AggregationController {
 
   @EventPattern('model-weights')
   async handleModelWeights(@Payload() message: any) {
-    const { userId, weights } = message;
-    await this.aggregationService.processWeights(userId, weights);
+    const { weights } = message;
+    await this.aggregationService.processWeights(weights);
   }
 }

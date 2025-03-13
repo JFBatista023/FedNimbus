@@ -14,7 +14,7 @@ import {
 import { getDownloadURL, ref } from 'firebase/storage';
 import { firestore, storage } from 'src/infra/firebase/firebase.config';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { TrainingParams } from './entities/training.entity';
 
@@ -26,9 +26,9 @@ export class TrainingService {
 
   private readonly paramsCollection = collection(firestore, 'params-info');
   private readonly aggCollection = collection(firestore, 'aggregated-weights');
+  private readonly logger = new Logger(TrainingService.name);
   private readonly CONVERGENCE_THRESHOLD = {
-    loss: 0.05,
-    mse: 0.1,
+    loss: 0.58,
   };
   private readonly layerShapes = [
     [11, 64], // Primeira camada
@@ -71,7 +71,6 @@ export class TrainingService {
 
       console.log('Parâmetros iniciais:', {
         weightsLength: initialParams.aggregatedWeights.length,
-        layerSizes: initialParams.aggregatedWeights.map(w => w.length),
       });
 
       const trainingStartTime = new Date().getTime();
@@ -124,9 +123,10 @@ export class TrainingService {
       const history = await model.fit(dataset.xs, dataset.ys, {
         epochs: initialParams.epochs,
         batchSize: initialParams.batchSize,
-        validationSplit: 0.3, // Adiciona validação split
+        validationSplit: 0.2, // Adiciona validação split
         callbacks: {
           onEpochEnd: (epoch, logs) => {
+            console.log(`Epoch ${epoch}: Loss=${logs.loss}, MSE=${logs.mse}`);
             // Coleta métricas a cada epoch
             const epochMetrics = {
               epochNumber: epoch,
@@ -150,10 +150,12 @@ export class TrainingService {
       const finalMse = Number(history.history['mse'].slice(-1)[0]);
       const finalRmse = Math.sqrt(finalMse);
 
-      const weights = model.trainableWeights;
-      const serializedWeights = weights.map(w =>
-        Array.from(w.read().dataSync()),
-      );
+      // const weights = model.trainableWeights;
+      // const serializedWeights = weights.map(w =>
+      //   Array.from(w.read().dataSync()),
+      // );
+
+      const finalWeights = model.trainableWeights;
 
       const newTrainingParams = new TrainingParams({
         userId: idFromToken,
@@ -190,10 +192,11 @@ export class TrainingService {
       await addDoc(this.paramsCollection, trainingParamsWithoutId);
 
       // Enviar pesos para o microserviço de agregação
-      return this.aggregation_client.emit('model-weights', {
-        userId: idFromToken,
-        weights: serializedWeights.flat(), // Garantir que os pesos estejam achatados
-      });
+      // return this.aggregation_client.emit('model-weights', {
+      //   userId: idFromToken,
+      //   weights: finalWeights.flat(), // Garantir que os pesos estejam achatados
+      // });
+      this.sendWeightsForAggregation(idFromToken, finalWeights);
     } catch (error) {
       console.error('Erro no processamento do treinamento:', error);
       throw error;
@@ -237,8 +240,8 @@ export class TrainingService {
       });
 
       return new TrainingParams({
-        learningRate: 0.01,
-        epochs: 10,
+        learningRate: 0.001,
+        epochs: 20,
         batchSize: 32,
         hasConverged: false,
         createdAt: new Date(),
@@ -265,10 +268,12 @@ export class TrainingService {
       }
 
       const data = snapshot.docs[0].data();
-
-      // Validação dos pesos agregados
-      if (!this.validateWeights(data.weights)) {
-        console.log('Pesos agregados inválidos, usando pesos iniciais');
+      if (
+        !data.weights ||
+        !Array.isArray(data.weights) ||
+        data.weights.length !== this.expectedTotalWeights
+      ) {
+        this.logger.error('Pesos agregados inválidos, usando pesos iniciais');
         return null;
       }
 
@@ -285,7 +290,7 @@ export class TrainingService {
         aggregatedWeights: data.weights,
       });
     } catch (error) {
-      console.error('Erro ao buscar pesos agregados:', error);
+      this.logger.error('Erro ao buscar pesos agregados:', error);
       return null;
     }
   }
@@ -429,20 +434,57 @@ export class TrainingService {
   }
 
   private validateWeights(weights: number[]): boolean {
-    if (!weights || !Array.isArray(weights)) return false;
-    if (weights.length !== this.expectedTotalWeights) return false;
-    if (weights.some(w => typeof w !== 'number' || isNaN(w))) return false;
+    if (!weights || !Array.isArray(weights)) {
+      this.logger.error('Pesos inválidos: não é um array');
+      return false;
+    }
+
+    if (weights.length !== this.expectedTotalWeights) {
+      this.logger.error(
+        `Tamanho incorreto de pesos: Esperado ${this.expectedTotalWeights}, Recebido ${weights.length}`,
+      );
+      return false;
+    }
+
+    if (weights.some(w => typeof w !== 'number' || !isFinite(w))) {
+      this.logger.error('Pesos contêm valores não numéricos ou infinitos');
+      return false;
+    }
+
     return true;
   }
 
-  private checkConvergence(history: tf.History): boolean {
+  private async sendWeightsForAggregation(
+    userId: string,
+    weights: tf.LayerVariable[],
+  ) {
+    try {
+      const serializedWeights = weights.flatMap(variable =>
+        Array.from(variable.read().dataSync()),
+      );
+
+      await this.aggregation_client.emit('model-weights', {
+        userId,
+        weights: serializedWeights,
+      });
+
+      this.logger.log(
+        `Pesos enviados para agregação (quantidade: ${serializedWeights.length})`,
+      );
+    } catch (error) {
+      this.logger.error(`Erro ao enviar pesos: ${error.message}`);
+    }
+  }
+
+  private checkConvergence(history): boolean {
     const lastLoss = Number(history.history['loss'].slice(-1)[0]);
-    const lastMse = Number(history.history['mse'].slice(-1)[0]);
-    console.log(lastLoss, lastMse);
+    const lastValLoss = history.history['val_loss']
+      ? Number(history.history['val_loss'].slice(-1)[0])
+      : null;
 
     return (
       lastLoss < this.CONVERGENCE_THRESHOLD.loss &&
-      lastMse < this.CONVERGENCE_THRESHOLD.mse
+      (lastValLoss === null || lastValLoss < this.CONVERGENCE_THRESHOLD.loss)
     );
   }
 }

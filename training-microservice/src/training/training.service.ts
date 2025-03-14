@@ -240,7 +240,7 @@ export class TrainingService {
       });
 
       return new TrainingParams({
-        learningRate: 0.001,
+        learningRate: 0.0005,
         epochs: 20,
         batchSize: 32,
         hasConverged: false,
@@ -482,9 +482,6 @@ export class TrainingService {
       ? Number(history.history['val_loss'].slice(-1)[0])
       : null;
 
-    return (
-      lastLoss < this.CONVERGENCE_THRESHOLD.loss &&
-      (lastValLoss === null || lastValLoss < this.CONVERGENCE_THRESHOLD.loss)
-    );
+    return lastLoss < this.CONVERGENCE_THRESHOLD.loss && lastValLoss < lastLoss;
   }
 }

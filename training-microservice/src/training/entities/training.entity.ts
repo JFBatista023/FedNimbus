@@ -44,7 +44,7 @@ export class TrainingParams {
   constructor(data: Partial<TrainingParams>) {
     this.id = data.id;
     this.userId = data.userId;
-    this.learningRate = data.learningRate || 0.001;
+    this.learningRate = data.learningRate || 0.0005;
     this.epochs = data.epochs || 20;
     this.batchSize = data.batchSize || 32;
     this.hasConverged = data.hasConverged || false;

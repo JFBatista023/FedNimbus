@@ -1,11 +1,10 @@
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { configDotenv } from 'dotenv';
 import { jwtConstants } from 'src/infra/auth/constants';
-import { MetricsMiddleware } from 'src/middlewares/metrics.middleware';
 import { GatewayController } from './gateway.controller';
 import { GatewayService } from './gateway.service';
 
@@ -64,8 +63,4 @@ configDotenv();
   controllers: [GatewayController],
   providers: [GatewayService],
 })
-export class GatewayModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(MetricsMiddleware).forRoutes('*'); // Aplica o middleware em todas as rotas
-  }
-}
+export class GatewayModule {}
